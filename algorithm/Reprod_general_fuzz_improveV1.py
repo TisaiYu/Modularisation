@@ -19,7 +19,7 @@
 ----------------------------------------------------------------------------------------------------------------------------------------
 
 """
-
+import numpy as np
 import pandas as pd
 import networkx as nx
 from PyQt5.QtCore import Qt
@@ -256,9 +256,9 @@ class Reprod:
 
     def sql_dsm(self):# TisaiYu[2024/8/23] 一个连接算一个ACPij，有多少个连接就算多少个ACPij，不清楚这个怎么对应到最后DSM上，再看看论文吧
         # TisaiYu[2024/8/23]
-        DSM = np.zeros([self.parts_num,self.parts_num])
+        function_DSM = np.zeros([self.parts_num,self.parts_num])
+        connection_DSM = np.zeros([self.parts_num,self.parts_num])
 
-        print(DSM.shape)
         fuzzy_system_ACP = FuzzySystemACP()
         sql_model = QtSql.QSqlTableModel()
         sql_model.setTable("AddRecordTable")
@@ -363,7 +363,7 @@ class Reprod:
             ACP_value_dict[self.numpy_array[i,1]][self.numpy_array[i,2]]=ACPij
             if not essay_data:
                 ACPij = 1
-            DSM[int(self.numpy_array[i,1]),int(self.numpy_array[i,2])] += ACPij
+            connection_DSM[int(self.numpy_array[i,1]),int(self.numpy_array[i,2])] += ACPij
         # TisaiYu[2024/8/27] 和功能相关的，这里最后自己编一个怎么根据层次功能树来得到功能的评估值，原文献是属于相同系统（功能）的+1
         function_corr_dict = defaultdict(list)
         for i in range(self.parts_num): # TisaiYu[2024/8/28] 判断功能是否相同
@@ -388,9 +388,9 @@ class Reprod:
                     # TisaiYu[2024/11/13] 11.11给的系统的功能关联度，因为给的功能编码和以前不一致，后面考虑通用性封装
                     from algorithm.FHA import FHA
                     fha = FHA()
-                    association = fha.func_dsm(function1_list, function2_list)
+                    association = fha.func_dsm_distance(function1_list, function2_list)
 
-                    DSM[int(sql_model.data(part_index1,Qt.DisplayRole)),int(sql_model.data(part_index2,Qt.DisplayRole))] += association
+                    function_DSM[int(sql_model.data(part_index1,Qt.DisplayRole)),int(sql_model.data(part_index2,Qt.DisplayRole))] += association
                     function_corr_dict["零部件1编号"].append(i)
                     function_corr_dict["零部件2编号"].append(j)
                     function_corr_dict["零部件1功能"].append(','.join(function1_list))
@@ -400,12 +400,27 @@ class Reprod:
                 else:
 
                     if function1_full_text == function2_full_text:
-                        DSM[int(sql_model.data(part_index1, Qt.DisplayRole)), int(
+                        function_DSM[int(sql_model.data(part_index1, Qt.DisplayRole)), int(
                             sql_model.data(part_index2, Qt.DisplayRole))] += 3
                     # else:
                     #     if function1 == function2:
                     #         DSM[int(sql_model.data(part_index1, Qt.DisplayRole)), int(
                     #             sql_model.data(part_index2, Qt.DisplayRole))] += 1.5
+
+        # function_DSM = function_DSM / np.max(function_DSM)
+        '----------------------------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        '----------------------------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        '----------------------------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        '----------------------------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        # TisaiYu[2024/11/13] 现在先改为distance，取最大最小归一化为关联度
+        max_distance = np.max(function_DSM)
+        function_DSM[function_DSM<0] = max_distance*1.12 # TisaiYu[2024/11/13] 这样最小的非0是0.1左右
+        function_DSM = 1-function_DSM/np.max(function_DSM)
+        function_DSM[np.tril_indices_from(function_DSM, -1)] = 0
+
+        connection_DSM = connection_DSM/np.max(connection_DSM)
+        DSM = function_DSM+connection_DSM
+        DSM = DSM / np.max(DSM)
 
         df = pd.DataFrame(function_corr_dict)
         df.to_excel("功能关联度计算结果.xlsx")
@@ -422,7 +437,7 @@ class Reprod:
                     continue
         max_acp = np.max(DSM)
         for i in range(self.parts_num):
-            DSM[i,i] = max_acp*1.25
+            DSM[i,i] = max_acp*1.05
         DSM = DSM/np.max(DSM)
 
         plt.figure()

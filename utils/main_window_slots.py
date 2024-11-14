@@ -1,4 +1,7 @@
 import sqlite3
+
+import numpy as np
+
 from userInterface.CustomInputDialog import *
 from userInterface.mainwindow_ui import *
 from PyQt5.QtCore import qDebug, QSize
@@ -82,25 +85,6 @@ class DrawDendrogram(QThread):
         self.dedrogram_view.axes.set_xticklabels(num_array)
 
         self.draw_finished.emit(Z, input_sequence, self.dedrogram_view)
-
-
-# TisaiYu[2024/6/13] 设置tableview的小数位数显示，重写父类的data函数
-class MyTableModel(QtCore.QAbstractTableModel):
-    def __init__(self, data, parent=None):
-        super().__init__(parent)
-        self.data = data
-
-    def columnCount(self, parent=None):
-        return len(self.data[0])
-
-    def rowCount(self, parent=None):
-        return len(self.data[1])
-
-    def data(self, index, role):
-        if role == QtCore.Qt.DisplayRole:
-            row = index.row()
-            col = index.column()
-            return str(self.data[row][col])
 
 
 class DecimalDelegate(QStyledItemDelegate):
@@ -467,6 +451,7 @@ class Modularization(QMainWindow,
         if  not self.essay_data:
             last_iter_module_num = 0
             unique_labels = np.unique(cluster_labels)
+            new_labels = None
             while len(unique_labels)!=self.DSM.shape[0]:
                 for module_index in unique_labels:
                     disobey_module_comps = np.where(cluster_labels == unique_labels[module_index-1])[0]
@@ -484,10 +469,27 @@ class Modularization(QMainWindow,
                         # 使用字典进行标签转换
                         new_labels = np.array([label_mapping[label] for label in copy_labels])
                         self.reorg_dsm(self.DSM, new_labels)
+
+                        '''***********************************************
+                        **************************************************'''
+                        # TisaiYu[2024/11/14] 绘制新的小的颜色树表示聚类迭代结果
+                        plt.figure()
+                        if len(np.unique(small_best_clustering_labels))==Z_new.shape[0]+1:# TisaiYu[2024/11/14] 表示各自为一类，实际没有划分
+                            re = hierarchy.dendrogram(Z_new, color_threshold=Z_new[0,2]-0.01, above_threshold_color='#bcbddc')
+                        else:
+                            re = hierarchy.dendrogram(Z_new,
+                                                      color_threshold=Z_new[-(len(np.unique(small_best_clustering_labels)) - 1), 2],
+                                                      above_threshold_color='#bcbddc')
+                        plt.xticks(fontsize=12)
+                        plt.show()
+                        '''*******************************************
+                        **************************************************'''
+
                         this_iter_module_num = len(np.unique(new_labels))
                         if this_iter_module_num == last_iter_module_num:
                             continue
                     else:
+
                         continue
                 cluster_labels = new_labels
                 unique_labels = np.unique(cluster_labels)

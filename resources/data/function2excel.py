@@ -178,11 +178,11 @@ def system_function_parse(system_id : str = 0):
             if type_id == 'g':
                 for part_id in assembly2part[assembly_or_part]:
                     if part_id not in function2part['ID']:
-                        function2part['ID'].append(part_id)
+                        function2part['ID'].append(part_id-1)
                     function__record_list[part_id].append(function)
             else:
                 if assembly_or_part not in function2part['ID']:
-                    function2part['ID'].append(assembly_or_part)
+                    function2part['ID'].append(assembly_or_part-1)
                 function__record_list[assembly_or_part].append(function)
     function2part['ID'] = sorted(function2part['ID'],key=lambda x:int(x))
     for part_id in function2part['ID']:

@@ -181,8 +181,12 @@ if __name__ == "__main__":
     fha = FHA()
 
     # 示例输入列表
-    a1 = ['FJA-200', 'FJB', 'FJA-10']
-    a2 = ['FJA-201']
+    a1 = ['S24']
+    a2 = ['S611','S62']
+    d = fha.func_dsm_distance(a1,a2)
+    print(d)
+    a1 = ['S611','S62']
+    a2 = ['S611','S62']
     d = fha.func_dsm_distance(a1,a2)
     print(d)
 

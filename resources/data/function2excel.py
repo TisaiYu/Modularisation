@@ -177,23 +177,41 @@ def system_function_parse(system_id : str = 0):
             type_id = assembly_or_part[0]
             if type_id == 'g':
                 for part_id in assembly2part[assembly_or_part]:
+                    part_id = str(int(part_id)-1)
                     if part_id not in function2part['ID']:
-                        function2part['ID'].append(part_id-1)
-                    function__record_list[part_id].append(function)
+                        function2part['ID'].append(part_id)
+                    if function not in function__record_list[part_id]:
+                        function__record_list[part_id].append(function)
+                    else:
+                        pass
             else:
+                assembly_or_part = str(int(assembly_or_part)-1)
                 if assembly_or_part not in function2part['ID']:
-                    function2part['ID'].append(assembly_or_part-1)
-                function__record_list[assembly_or_part].append(function)
+                    function2part['ID'].append(assembly_or_part)
+                if function not in function__record_list[assembly_or_part]:
+                    function__record_list[assembly_or_part].append(function)
+                else:
+                    pass
     function2part['ID'] = sorted(function2part['ID'],key=lambda x:int(x))
     for part_id in function2part['ID']:
         functions = function__record_list[part_id]
         functions_dot = ','.join(functions)
         function_list.append(functions_dot)
     df = pd.DataFrame(function2part)
+
     df["ID"] = df["ID"].astype(int)
+
+    df_conn = pd.read_excel('SqlLoadExcel/connection.xlsx')
+    df = df.sort_values(by="ID")
+    df["function"] = pd.Series(function_list)
+    count=0
+    for i in range(len(df_conn)):
+        if i not in df["ID"].tolist():
+            count+=1
+            df.loc[len(df), "ID"] = i
+            df.loc[len(df)-count, "function"] = '/'
     df = df.sort_values(by="ID")
 
-    df["function"] = pd.Series(function_list)
     df.to_excel('SqlLoadExcel/function.xlsx',index=False)
 
 

@@ -1,4 +1,4 @@
-from utils.main_window_slots import *
+from userInterface.response.main_window_slots import *
 import sys
 import qdarkstyle
 from PyQt5.QtWidgets import QApplication

@@ -361,11 +361,15 @@ class Reprod:
             df = pd.DataFrame(ACP_dict)
             df.to_excel("ACP计算结果.xlsx")
             ACP_value_dict[self.numpy_array[i,1]][self.numpy_array[i,2]]=ACPij
-            if not essay_data:
-                ACPij = 1
+            if not essay_data:# TisaiYu[2024/11/19] 如果是原本的txt内的连接关系，则为0.8，因为不是直接连接，还有管道，和管道是直接连接为1
+                if int(self.numpy_array[i,1])<=107 and int(self.numpy_array[i,2])<=107:
+                    ACPij = 0.8
+                else:
+                    ACPij = 1
             connection_DSM[int(self.numpy_array[i,1]),int(self.numpy_array[i,2])] += ACPij
         # TisaiYu[2024/8/27] 和功能相关的，这里最后自己编一个怎么根据层次功能树来得到功能的评估值，原文献是属于相同系统（功能）的+1
         function_corr_dict = defaultdict(list)
+        connection_corr_dict = defaultdict(list)
         for i in range(self.parts_num): # TisaiYu[2024/8/28] 判断功能是否相同
             for j in range(i+1,self.parts_num):
                 if not essay_data:
@@ -395,7 +399,7 @@ class Reprod:
                     function_corr_dict["零部件2编号"].append(j)
                     function_corr_dict["零部件1功能"].append(','.join(function1_list))
                     function_corr_dict["零部件2功能"].append(','.join(function2_list))
-                    function_corr_dict["计算关联度"].append(association)
+                    # function_corr_dict["计算关联度"].append(association)
                     print(f"零部件{i}功能{function1_list}和零部件{j}功能{function2_list}的功能关联度为：{association}")
                 else:
 
@@ -418,12 +422,24 @@ class Reprod:
         function_DSM = 1-function_DSM/np.max(function_DSM)
         function_DSM[np.tril_indices_from(function_DSM, -1)] = 0
 
+        np.fill_diagonal(connection_DSM,1)
         connection_DSM = connection_DSM/np.max(connection_DSM)
         DSM = function_DSM+connection_DSM
         DSM = DSM / np.max(DSM)
 
+
+
+        # 遍历矩阵的上三角部分并提取关联度值
+        for i in range(function_DSM.shape[0]):
+            for j in range(i + 1, function_DSM.shape[1]):
+                function_corr_dict["计算关联度"].append(function_DSM[i, j])
+
         df = pd.DataFrame(function_corr_dict)
-        df.to_excel("功能关联度计算结果.xlsx")
+        df.to_excel("功能集合关联度计算结果.xlsx",index=False,header=False)
+        df_conn = pd.DataFrame(connection_DSM)
+        df_conn.to_excel("连接关联度矩阵.xlsx", index=False, header=False)
+        df_func = pd.DataFrame(function_DSM)
+        df_func.to_excel("功能关联度矩阵.xlsx", index=False, header=False)
 
         # TisaiYu[2024/8/28] 再把DSM对称填充
         for i in range(self.parts_num):
@@ -443,12 +459,14 @@ class Reprod:
         plt.figure()
         plt.imshow(DSM,cmap='Blues', interpolation='nearest')
         plt.show()
+
+
         from scipy.spatial.distance import pdist
         from scipy.cluster import hierarchy
 
         dis_mat = pdist(DSM,
                         'cosine')  # TisaiYu[2024/6/25] 层次聚类输入要么是一维数组（表示距离矩阵的压缩，比如30*30关联度矩阵，距离矩阵有30*30但是对称只取450），或者是二维数组（就是特征矩阵）
-
+        # dis_mat = DSM[np.triu_indices_from(DSM, k=1)]
         Z = hierarchy.linkage(dis_mat, method='ward',
                               metric="cosine")  # TisaiYu[2024/9/5] 当输入是一个一维的压缩距离矩阵时（使用pdist的结果），那么metric是没有用，如果是一个二维的表示输入特征的数组，metric实际和pdist做了一样的事情
 

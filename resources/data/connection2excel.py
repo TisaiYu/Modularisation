@@ -107,8 +107,9 @@ def system_connection_parse(system_id : str = 0):
                     dot_split = connect_description_line.split(',')
                     part_name = dot_split[0]
                     connecting_ids = dot_split[1:]
+                    connecting_ids = [str(int(id)-1) for id in connecting_ids]
                     connecting_ids = ','.join(connecting_ids)
-                    data["ID"].append(part_id)
+                    data["ID"].append(int(part_id)-1)
                     data["Part Name"].append(part_name)
                     data["Connecting ID"].append(connecting_ids)
                 else:

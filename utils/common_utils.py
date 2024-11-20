@@ -19,101 +19,7 @@ def is_float(s):
         return False
 
 
-# 生成7个矩阵s1到s7，这里只是示例，实际情况需要根据具体数据生成
-def generate_symmetric_matrix1(size):
-    # 生成一个大小为size*size的零矩阵
-    matrix = np.zeros((size, size))
 
-    # 生成对角线上全为1的矩阵
-    np.fill_diagonal(matrix, 1)
-
-    # 随机选择的数值列表
-    choices = [0.8, 0.5, 0.2, 0]
-
-    # 填充矩阵的上三角部分（不包括对角线）
-    for i in range(size):
-        for j in range(i + 1, size):
-            # 随机选择一个数值
-            value = np.random.choice(choices)
-            # 填充对称位置
-            matrix[i][j] = matrix[j][i] = value
-
-    return matrix
-
-def generate_symmetric_matrix2(size):
-    # 生成一个大小为size*size的零矩阵
-    matrix = np.zeros((size, size))
-
-    # 生成对角线上全为1的矩阵
-    np.fill_diagonal(matrix, 1)
-
-    # 随机选择的数值列表
-    choices = [0.8, 0.4, 0]
-
-    # 填充矩阵的上三角部分（不包括对角线）
-    for i in range(size):
-        for j in range(i + 1, size):
-            # 随机选择一个数值
-            value = np.random.choice(choices)
-            # 填充对称位置
-            matrix[i][j] = matrix[j][i] = value
-
-    return matrix
-
-def generate_symmetric_matrix3(size):
-    # 生成一个大小为size*size的零矩阵
-    matrix = np.zeros((size, size))
-
-    # 生成对角线上全为1的矩阵
-    np.fill_diagonal(matrix, 1)
-
-    # 随机选择的数值列表
-    choices = [0.8, 0.3, 0]
-
-    # 填充矩阵的上三角部分（不包括对角线）
-    for i in range(size):
-        for j in range(i + 1, size):
-            # 随机选择一个数值
-            value = np.random.choice(choices)
-            # 填充对称位置
-            matrix[i][j] = matrix[j][i] = value
-
-    return matrix
-
-def generate_test_value(n, num_classes, num_matrices=7):
-    if n < num_classes:
-        num_classes = n
-    points_per_class = n // num_classes  # 每个类别的数据点数
-    matrices = np.zeros((num_matrices,n, n))
-
-    # 为每个类别生成高相关性数据
-    for i in range(num_classes):
-        start_index = i * points_per_class
-        end_index = start_index + points_per_class if i < num_classes - 1 else n
-
-        for matrix in matrices:
-            # 类内高相关性
-            high_correlation = np.random.uniform(0.8, 1.0, (end_index - start_index, end_index - start_index))
-            matrix[start_index:end_index, start_index:end_index] = high_correlation
-
-            # 确保对角线是1
-            np.fill_diagonal(matrix[start_index:end_index, start_index:end_index], 1)
-
-    # 为不同类别间生成低相关性数据
-    for matrix in matrices:
-        for i in range(num_classes):
-            for j in range(i + 1, num_classes):
-                si = i * points_per_class
-                ei = si + points_per_class if i < num_classes - 1 else n
-                sj = j * points_per_class
-                ej = sj + points_per_class if j < num_classes - 1 else n
-
-                # 类间低相关性
-                low_correlation = np.random.uniform(0.0, 0.2, (ei - si, ej - sj))
-                matrix[si:ei, sj:ej] = low_correlation
-                matrix[sj:ej, si:ei] = low_correlation.T  # 对称填充
-
-    return matrices
 
 
 def shuffle_data(data):
@@ -122,7 +28,6 @@ def shuffle_data(data):
     np.random.shuffle(original_indices)
     shuffled_data = data[original_indices]
     return shuffled_data, original_indices
-
 
 def compute_D1(cluster_labels,
                DSM):  # TisaiYu[2024/6/3] 模块内聚合度，越大越好，就是每个模块内的物品对应的距离矩阵上的加起来再除分母，分母为每个模块物品数量的任取2个组合，然后各个模块的取组合结果加起来。
@@ -141,7 +46,6 @@ def compute_D1(cluster_labels,
         D1_denominator += ((len(indices) * (len(indices)-1))/2)
         D1 += (D1_numerator / D1_denominator)
     return D1/len(unique_labels)
-
 
 def compute_D2(cluster_labels,
                DSM):  # TisaiYu[2024/6/3] 模块间耦合度，越小越好，同D1理，就是模块间的物品对应关联矩阵的值加起来，然后再除一个分母，分母是两两模块，各自的物品数量乘积，最后各个模块都两两组合，加起来。
@@ -168,48 +72,23 @@ def compute_D2(cluster_labels,
         return np.inf
 
 def compute_CH(cluster_labels,DSM): # TisaiYu[2024/6/25] 关于聚类的数据指标，有些调库的输入是特征矩阵DSM，或者是距离矩阵，要辨别。
-    # distance_matrix = 1 - DSM
+
     if len(np.unique(cluster_labels)) == 1:
         return 0
-    # n_samples = len(cluster_labels)
-    # n_clusters = len(np.unique(cluster_labels))
-    # overall_mean = np.mean(distance_matrix)
-    #
-    # # 计算簇间方差 Bk，簇内方差Wk
-    # Wk = 0
-    # Bk = 0
-    # for i in np.unique(cluster_labels):
-    #     cluster_mask = (cluster_labels == i)
-    #     nq = np.count_nonzero(cluster_mask)
-    #     within_cluster_distances = distance_matrix[np.ix_(cluster_mask, cluster_mask)] # TisaiYu[2024/6/25] 这里重复了ij ji
-    #     cq = np.mean(within_cluster_distances)
-    #     Wk += np.sum((within_cluster_distances/2 - cq) ** 2)
-    #     Bk += nq * (cq - overall_mean) ** 2
-    #
-    # # 计算CH指数
-    # CH = ((n_samples - n_clusters) * Bk) / ((n_clusters - 1) * Wk)
-    # x_mds = MDS(DSM)
-    dia_value = np.max(DSM)
-    # CH = metrics.calinski_harabasz_score(x_mds,cluster_labels)
-    CH = metrics.calinski_harabasz_score(DSM,cluster_labels)
+    CH = metrics.calinski_harabasz_score(DSM,cluster_labels,)
     return CH
 
 def compute_DB(cluster_labels,DSM):
     if len(np.unique(cluster_labels)) == 1:
         return 0
-    x_mds = MDS(DSM)
-    dia_value = np.max(DSM)
-    DB = metrics.davies_bouldin_score(x_mds,cluster_labels)
-    # DB = metrics.davies_bouldin_score(DSM,cluster_labels)
+    DB = metrics.davies_bouldin_score(DSM,cluster_labels)
     return DB
 
 
-def compute_Sil(cluster_labels,DSM): # TisaiYu[2024/6/25] Sil是轮廓系数，但是其输入是原特征矩阵，不是距离矩阵
+def compute_Sil(cluster_labels,DSM): # TisaiYu[2024/6/25] Sil是轮廓系数
     if len(np.unique(cluster_labels)) == 1:
         return 0
-    dia_value = np.max(DSM)
-    Sil = metrics.silhouette_score(dia_value-DSM, cluster_labels,metric="precomputed")
-    Sil = (Sil+1)/2 # TisaiYu[2024/6/28] 缩放到0到1
+    Sil = metrics.silhouette_score(DSM, cluster_labels,metric="cosine")
     return Sil
 
 def compute_Gap(cluster_labels,DSM, B=20):
@@ -281,7 +160,6 @@ def compute_CE(cluster_labels,DSM):
                 else:
                     continue
 
-
     for i in range(len(unique_labels)): # TisaiYu[2024/6/13] 遍历模块间
         for j in range(i + 1, len(unique_labels)):
             indices_i = np.where(cluster_labels == unique_labels[i])[0]
@@ -309,35 +187,6 @@ def compute_Q(cluster_labels,DSM):
         community = [i for i, x in enumerate(cluster_labels) if x == label]
         communities.append(set(community))
     Q = nx.community.modularity(G,communities)
-    # unique_labels = np.unique(cluster_labels)
-    # H = np.zeros((len(unique_labels),len(unique_labels)))
-    # DSM_conjunc = np.copy(DSM)
-    # DSM_conjunc[np.where(DSM >0.5)] = 1
-    # all_sum = np.sum(DSM)
-    # Q=0
-    # for index,label in enumerate(unique_labels):  # TisaiYu[2024/6/13] 遍历模块内
-    #     yii = 0
-    #     indices = np.where(cluster_labels == label)[0]
-    #     if len(indices) < 2:
-    #         continue
-    #     for i in range(len(indices)):
-    #         for j in range(i + 1, len(indices)):
-    #             yii += DSM[indices[i], indices[j]]
-    #     yii = 2*yii/(len(indices)*(len(indices)-1))
-    #     H[index,index] = yii/all_sum
-    # for i in range(len(unique_labels)):  # TisaiYu[2024/6/13] 遍历模块间
-    #     for j in range(i + 1, len(unique_labels)):
-    #         yij = 0
-    #         indices_i = np.where(cluster_labels == unique_labels[i])[0]
-    #         indices_j = np.where(cluster_labels == unique_labels[j])[0]
-    #         for idx_i in indices_i:
-    #             for idx_j in indices_j:
-    #                 yij += DSM[idx_i, idx_j]
-    #         H[i, j] = yij/all_sum/2
-    #         H[j, i] = yij/all_sum/2
-    # for i in range(len(unique_labels)):
-    #     Q = Q+H[i,i]-np.sum(H[:,i])**2
-    # print(Q)
     Q = (Q+1)/2
     return Q
 
